@@ -1,0 +1,3 @@
+displayName = Big Booty Mod
+author = Smug
+version = 0.1
