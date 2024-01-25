@@ -1,7 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Terraria;
 
-namespace LunacyMod.Core.Utils
+namespace BigBootyMod.Core.Utils
 {
     public static class GraphicsUtils
     {
