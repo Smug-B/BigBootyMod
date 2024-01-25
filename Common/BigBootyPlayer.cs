@@ -17,9 +17,9 @@ namespace BigBootyMod.Common
     {
         public GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
 
-        public Cheek LeftCheek { get; } = new Cheek();
+        public Cheek LeftCheek { get; } = new Cheek(true);
 
-        public Cheek RightCheek { get; } = new Cheek();
+        public Cheek RightCheek { get; } = new Cheek(false);
 
         public HashSet<DrawData> LegData = new HashSet<DrawData>();
 
@@ -50,7 +50,6 @@ namespace BigBootyMod.Common
             bigBootyData.GetData(colorData);
 
             Cheek.GenerateStaticBootyData(bigBootyData, colorData);
-            LeftCheek.LeftCheek = true;
 
             VertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionColorTexture), Cheek.VertexCount, BufferUsage.WriteOnly);
             Indicies = new IndexBuffer(GraphicsDevice, typeof(int), Cheek.VertexCount, BufferUsage.WriteOnly);
@@ -135,7 +134,7 @@ namespace BigBootyMod.Common
 
                 Main.spriteBatch.End();
                 Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, Matrix.Value);
-            } // Showed Code
+            }
 
             if (end != drawDataCache.Count)
             {

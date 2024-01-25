@@ -1,4 +1,5 @@
-﻿using BigBootyMod.Core.Physics.Constraints;
+﻿using BigBootyMod.Core.Physics;
+using BigBootyMod.Core.Physics.Constraints;
 using BigBootyMod.Core.Physics.Particles;
 using BigBootyMod.Core.Utils;
 using Microsoft.Xna.Framework;
@@ -6,8 +7,8 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Terraria;
 using Terraria.DataStructures;
-using Terraria.Graphics.Renderers;
 
 namespace BigBootyMod.Common
 {
@@ -21,7 +22,9 @@ namespace BigBootyMod.Common
 
         public static int VertexCount => RenderPoints.Count;
 
-        public bool LeftCheek { get; set; }
+        public bool LeftCheek { get; }
+
+        public Cheek(bool leftCheek) => LeftCheek = leftCheek;
 
         public static void GenerateStaticBootyData(Texture2D bigBootyData, Color[] colorData)
         {
@@ -57,7 +60,8 @@ namespace BigBootyMod.Common
                         textureSampleCoordinates = new Vector2(27, 43);
                     }
 
-                    pointData.Add(new Point(i, j), new BigBootyParticle(i, j, 1, new Vector2(5), textureSampleCoordinates));
+                    Vector2 position = new Vector2(i, j);
+                    pointData.Add(new Point(i, j), new BigBootyParticle(position, position, 1, new Vector2(5), textureSampleCoordinates));
                 }
             }
 
@@ -86,6 +90,30 @@ namespace BigBootyMod.Common
                         RenderPoints.Add(pointData[new Point(i, j - 1)]);
                     }
                 }
+            }
+        }
+
+        public void Update(Player player)
+        {
+            int frame = player.legFrame.Y / 56;
+
+            foreach (BigBootyParticle verlet in Points)
+            {
+                if (LeftCheek)
+                {
+                    verlet.LeftOriginalOffset += GetDrawOffset(frame);
+                }
+                else
+                {
+                    verlet.RightOriginalOffset += GetDrawOffset(frame);
+                }
+
+                verlet.Update(PhysicsConstants.DeltaTime);
+            }
+
+            foreach (VerletConstraint constraint in Constraints)
+            {
+                constraint.ApplyConstraint();
             }
         }
 
