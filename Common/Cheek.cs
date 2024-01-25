@@ -29,11 +29,11 @@ namespace BigBootyMod.Common
         public static void GenerateStaticBootyData(Texture2D bigBootyData, Color[] colorData)
         {
             IDictionary<Point, BigBootyParticle> pointData = new Dictionary<Point, BigBootyParticle>();
-            for (int i = 0; i < bigBootyData.Width; i++)
+            for (int j = 0; j < bigBootyData.Height; j++)
             {
-                for (int j = 0; j < bigBootyData.Height; j++)
+                for (int i = 0; i < bigBootyData.Width; i++)
                 {
-                    Color color = colorData[i * bigBootyData.Width + j];
+                    Color color = colorData[j * bigBootyData.Width + i];
                     if (color.A == 0)
                     {
                         continue;
@@ -119,7 +119,7 @@ namespace BigBootyMod.Common
 
         public Vector2 GetDrawOffset(int frame)
         {
-            Vector2 offset = new Vector2(-22, -39);
+            Vector2 offset = new Vector2(-20, -39);
             if (frame <= 12)
             {
                 return frame switch
@@ -169,7 +169,7 @@ namespace BigBootyMod.Common
             IList<VertexPositionColorTexture> output = new List<VertexPositionColorTexture>();
             foreach (BigBootyParticle particle in RenderPoints)
             {
-                Vector2 screenCoordinates = particle.Position / 2f + leggingDrawData.position + GetDrawOffset(frame);
+                Vector2 screenCoordinates = particle.Position / 4f + leggingDrawData.position + GetDrawOffset(frame);
                 Vector2 normalizedDeviceCoordinates = GraphicsUtils.ScreenToNormalizedDeviceCoordinates(screenCoordinates);
                 output.Add(new VertexPositionColorTexture(new Vector3(normalizedDeviceCoordinates, 0), Color.White, particle.TextureUVCoordinates));
             }

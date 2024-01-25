@@ -98,7 +98,7 @@ namespace BigBootyMod.Common
             {
                 end = drawDataCache.Count;
             }
-            else
+            else if (LegDataData.sourceRect.Value.Top / 56 != 5) // Not jumping
             {
                 end++;
             }
@@ -107,10 +107,16 @@ namespace BigBootyMod.Common
             if (end != -1)
             {
                 Matrix = (Matrix)Transform.GetValue(Main.spriteBatch);
+                RasterizerState oldState = GraphicsDevice.RasterizerState;
 
                 Texture2D legTexture = LegDataData.texture;
                 GraphicsDevice.Indices = Indicies;
                 GraphicsDevice.Textures[0] = legTexture;
+
+                if (Main.menuMode == 10) // Why menuMode
+                {
+                    GraphicsDevice.RasterizerState = RasterizerState.CullNone;
+                }
 
                 VertexPositionColorTexture[]? leftCheek = LeftCheek.DrawBigBooty(legTexture, LegDataData);
                 if (leftCheek != null)
@@ -120,20 +126,22 @@ namespace BigBootyMod.Common
                     foreach (var effectTechnique in RenderEffect.CurrentTechnique.Passes)
                     {
                         effectTechnique.Apply();
-                        GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, Indicies.IndexCount, 0, Indicies.IndexCount / 3);
+                        GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, Indicies.IndexCount, 0, Indicies.IndexCount);
                     }
                 }
 
                 VertexBuffer.SetData(RightCheek.DrawBigBooty(legTexture, LegDataData));
                 GraphicsDevice.SetVertexBuffer(VertexBuffer);
+
                 foreach (var effectTechnique in RenderEffect.CurrentTechnique.Passes)
                 {
                     effectTechnique.Apply();
-                    GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, Indicies.IndexCount, 0, Indicies.IndexCount / 3);
+                    GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, Indicies.IndexCount, 0, Indicies.IndexCount);
                 }
 
                 Main.spriteBatch.End();
                 Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, Matrix.Value);
+                GraphicsDevice.RasterizerState = oldState;
             }
 
             if (end != drawDataCache.Count)
