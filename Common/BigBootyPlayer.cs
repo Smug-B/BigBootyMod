@@ -203,6 +203,7 @@ namespace BigBootyMod.Common
             if (spriteBuffer == null)
             {
                 spriteBuffer = new SpriteDrawBuffer(Main.graphics.GraphicsDevice, 200);
+                SpriteBuffer.SetValue(this, spriteBuffer);
             }
             else
             {
@@ -260,6 +261,7 @@ namespace BigBootyMod.Common
 
             if (end != drawDataCache.Count)
             {
+                spriteBuffer.CheckGraphicsDevice(Main.graphics.GraphicsDevice);
                 body(end, drawDataCache.Count, ref drawinfo);
             }
 
