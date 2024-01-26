@@ -10,11 +10,14 @@ using Terraria;
 using Terraria.ModLoader;
 using Terraria.ID;
 using System.Diagnostics.CodeAnalysis;
+using BigBootyMod.Core.Physics.Particles;
 
 namespace BigBootyMod.Common
 {
     public class BigBootyPlayer : ModPlayer
     {
+        public static bool InWorld => Main.menuMode == 10;
+
         public GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
 
         public Cheek LeftCheek { get; } = new Cheek(true);
@@ -40,9 +43,6 @@ namespace BigBootyMod.Common
         [NotNull]
         public FieldInfo? Transform { get; private set; }
 
-        [MaybeNull]
-        public Matrix? Matrix { get; private set; }
-
         public void GenerateBigBootyData()
         {
             Texture2D bigBootyData = BigBootyMod.Request<Texture2D>("Assets/BigBootyData", AssetRequestMode.ImmediateLoad).Value;
@@ -66,9 +66,7 @@ namespace BigBootyMod.Common
 
             On_PlayerDrawLayers.DrawPlayer_13_Leggings += FindLeggingData;
             On_PlayerDrawLayers.DrawPlayer_RenderAllLayers += RenderBigBooty;
-
             SpriteBuffer = typeof(PlayerDrawLayers).GetField("spriteBuffer", BindingFlags.NonPublic | BindingFlags.Static);
-            Transform = typeof(SpriteBatch).GetField("transformMatrix", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         private void FindLeggingData(On_PlayerDrawLayers.orig_DrawPlayer_13_Leggings orig, ref PlayerDrawSet drawinfo)
@@ -106,14 +104,12 @@ namespace BigBootyMod.Common
             body(0, end, ref drawinfo);
             if (end != -1)
             {
-                Matrix = (Matrix)Transform.GetValue(Main.spriteBatch);
                 RasterizerState oldState = GraphicsDevice.RasterizerState;
 
                 Texture2D legTexture = LegDataData.texture;
                 GraphicsDevice.Indices = Indicies;
                 GraphicsDevice.Textures[0] = legTexture;
-
-                if (Main.menuMode == 10) // Why menuMode
+                if (InWorld)
                 {
                     GraphicsDevice.RasterizerState = RasterizerState.CullNone;
                 }
@@ -140,7 +136,7 @@ namespace BigBootyMod.Common
                 }
 
                 Main.spriteBatch.End();
-                Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, Matrix.Value);
+                Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, InWorld ? Main.GameViewMatrix.TransformationMatrix : Main.UIScaleMatrix);
                 GraphicsDevice.RasterizerState = oldState;
             }
 
@@ -204,6 +200,25 @@ namespace BigBootyMod.Common
                 spriteBuffer.Unbind();
                 Main.pixelShader.CurrentTechnique.Passes[0].Apply();
             }
+        }
+
+        public Vector2 AppliedForce;
+
+        public int Timer;
+
+        public override void PostUpdate()
+        {
+            if (Player.itemAnimation > 0 && ++Timer % 5 == 0 && Main.MouseWorld != Player.Center)
+            {
+                AppliedForce = -Vector2.Normalize(Main.MouseWorld - Player.Center) * 18000;
+                AppliedForce.X = 0;
+            }
+            AppliedForce *= 0.75f;
+            foreach (BigBootyParticle particle in Cheek.Points)
+            {
+                particle.ApplyForce(AppliedForce);
+            }
+            Cheek.Update(Player);
         }
     }
 }

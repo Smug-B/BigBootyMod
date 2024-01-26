@@ -15,7 +15,7 @@ namespace BigBootyMod.Core.Physics.Particles
 
         public Vector2 TextureUVCoordinates { get; }
 
-        public Vector2 LeftPosition { get; private set; }
+        public Vector2 LeftPosition { get; set; }
 
         public Vector2 LeftOldPosition { get; private set; }
 
@@ -25,7 +25,7 @@ namespace BigBootyMod.Core.Physics.Particles
 
         public Vector2 LeftForce { get; private set; }
 
-        public Vector2 RightPosition { get => Position; private set => Position = value; }
+        public Vector2 RightPosition { get => Position; set => Position = value; }
 
         public Vector2 RightOldPosition { get => OldPosition; private set => OldPosition = value; }
 
@@ -44,11 +44,12 @@ namespace BigBootyMod.Core.Physics.Particles
             LeftOriginalPosition = leftPos;
 
             RightOriginalPosition = rightPos;
-
             MatchForce = matchingForce;
 
             TextureUVCoordinates = GraphicsUtils.GetUVCoordinates(textureCoordinates, SpriteSheetWidth, SpriteSheetHeight);
         }
+
+        public override Vector2 CalculateAppliedForce(Vector2 force) => Mass > 0 ? force : Vector2.Zero;
 
         public new void ApplyForce(Vector2 force)
         {
@@ -64,12 +65,10 @@ namespace BigBootyMod.Core.Physics.Particles
 
         public override void Update(float discreteTime)
         {
-            ApplyForce(new Vector2(0, Mass * PhysicsConstants.Gravity));
-
             Vector2 leftOriginal = LeftOriginalPosition + LeftOriginalOffset;
             if (LeftPosition != leftOriginal)
             {
-                Vector2 correctionForce = LeftPosition.DirectionTo(leftOriginal) * Position.Distance(leftOriginal) * MatchForce;
+                Vector2 correctionForce = LeftPosition.DirectionTo(leftOriginal) * LeftPosition.Distance(leftOriginal) * MatchForce;
                 ApplyForce(correctionForce, Vector2.Zero);
             }
 
@@ -80,17 +79,23 @@ namespace BigBootyMod.Core.Physics.Particles
                 ApplyForce(Vector2.Zero, correctionForce);
             }
 
-            Vector2 acceleration = Force / Mass;
-            Vector2 restOfTheCalculation = acceleration * discreteTime * discreteTime;
-            Vector2 newLeftPosition = 2 * LeftPosition - LeftOldPosition + restOfTheCalculation;
-            LeftOldPosition = LeftPosition;
+            float discreteTimeSquared = discreteTime * discreteTime;
+            Vector2 leftAcceleration = LeftForce / Mass;
+            Vector2 newLeftPosition = 2 * LeftPosition - LeftOldPosition + leftAcceleration * discreteTimeSquared;
+            LeftOldPosition = Vector2.Lerp(LeftPosition, newLeftPosition, 0.5f);
             LeftPosition = newLeftPosition;
 
-            Vector2 newRightPosition = 2 * RightPosition - RightOldPosition + restOfTheCalculation;
-            RightOldPosition = RightPosition;
+            Vector2 rightAcceleration = RightForce / Mass;
+            Vector2 newRightPosition = 2 * RightPosition - RightOldPosition + rightAcceleration * discreteTimeSquared;
+            RightOldPosition = Vector2.Lerp(RightPosition, newRightPosition, 0.5f);
             RightPosition = newRightPosition;
 
-            Force = Vector2.Zero;
+            LeftForce = Vector2.Zero;
+            RightForce = Vector2.Zero;
         }
+
+        public float LeftDistance(BigBootyParticle otherPoint) => Vector2.Distance(LeftPosition, otherPoint.LeftPosition);
+
+        public float RightDistance(BigBootyParticle otherPoint) => Vector2.Distance(RightPosition, otherPoint.RightPosition);
     }
 }
