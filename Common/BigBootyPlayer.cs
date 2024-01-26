@@ -11,37 +11,50 @@ using Terraria.ModLoader;
 using Terraria.ID;
 using System.Diagnostics.CodeAnalysis;
 using BigBootyMod.Core.Physics.Particles;
+using BigBootyMod.Common.Physics;
+using BigBootyMod.Core.Utils;
+using BigBootyMod.Core.Physics;
 
 namespace BigBootyMod.Common
 {
     public class BigBootyPlayer : ModPlayer
     {
+        public const int SamplingFactor = 4;
+
+        public static int VertexCount => RenderPoints.Count;
+
         public static bool InWorld => Main.menuMode == 10;
 
         public GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
 
-        public Cheek LeftCheek { get; } = new Cheek(true);
+        public static IList<BigBootyParticle> Points { get; private set; } = new List<BigBootyParticle>();
 
-        public Cheek RightCheek { get; } = new Cheek(false);
+        public static IList<BigBootyLengthConstraints> Constraints { get; private set; } = new List<BigBootyLengthConstraints>();
 
-        public HashSet<DrawData> LegData = new HashSet<DrawData>();
+        public static IList<BigBootyParticle> RenderPoints { get; private set; } = new List<BigBootyParticle>();
+
+        [NotNull]
+        public static VertexBuffer? VertexBuffer { get; private set; }
+
+        [NotNull]
+        public static IndexBuffer? Indicies { get; private set; }
+
+        [NotNull]
+        public static BasicEffect? RenderEffect { get; private set; }
+
+        [NotNull]
+        public static FieldInfo? SpriteBuffer { get; private set; }
+
+        [NotNull]
+        public static FieldInfo? Transform { get; private set; }
+
+        public Vector2 CheeksAppliedForce { get; set; }
+
+        public int JiggleTimer { get; private set; }
+
+        public HashSet<DrawData> LegData { get; } = new HashSet<DrawData>();
 
         public DrawData LegDataData;
-
-        [NotNull]
-        public VertexBuffer? VertexBuffer { get; private set; }
-
-        [NotNull]
-        public IndexBuffer? Indicies { get; private set; }
-
-        [NotNull]
-        public BasicEffect? RenderEffect { get; private set; }
-
-        [NotNull]
-        public FieldInfo? SpriteBuffer { get; private set; }
-
-        [NotNull]
-        public FieldInfo? Transform { get; private set; }
 
         public void GenerateBigBootyData()
         {
@@ -49,11 +62,102 @@ namespace BigBootyMod.Common
             Color[] colorData = new Color[bigBootyData.Width * bigBootyData.Height];
             bigBootyData.GetData(colorData);
 
-            Cheek.GenerateStaticBootyData(bigBootyData, colorData);
+            IDictionary<Point, BigBootyParticle> pointData = new Dictionary<Point, BigBootyParticle>();
+            for (int j = 0; j < bigBootyData.Height; j++)
+            {
+                for (int i = 0; i < bigBootyData.Width; i++)
+                {
+                    Color color = colorData[j * bigBootyData.Width + i];
+                    if (color.A == 0)
+                    {
+                        continue;
+                    }
 
-            VertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionColorTexture), Cheek.VertexCount, BufferUsage.WriteOnly);
-            Indicies = new IndexBuffer(GraphicsDevice, typeof(int), Cheek.VertexCount, BufferUsage.WriteOnly);
-            Indicies.SetData(Enumerable.Range(0, Cheek.VertexCount).ToArray());
+                    Vector2 textureSampleCoordinates = Vector2.Zero;
+                    if (color.R == 255)
+                    {
+                        textureSampleCoordinates = new Vector2(21, 43);
+                    }
+                    else if (color.R == 150)
+                    {
+                        textureSampleCoordinates = new Vector2(19, 45);
+                    }
+                    else if (color.R == 100)
+                    {
+                        textureSampleCoordinates = new Vector2(17, 45);
+                    }
+                    else if (color.R == 0)
+                    {
+                        textureSampleCoordinates = new Vector2(27, 43);
+                    }
+
+                    Vector2 matchingForce = new Vector2(3000);
+                    float mass = 1;
+                    if (color.G == 255)
+                    {
+                        mass = -1;
+                    }
+                    else if (color.G == 100)
+                    {
+                        matchingForce *= 2;
+                    }
+
+                    Vector2 position = new Vector2(i, j) + new Vector2(-16, -9) * SamplingFactor;
+                    pointData.Add(new Point(i, j), new BigBootyParticle(position, position, mass, matchingForce, textureSampleCoordinates));
+                }
+            }
+
+            Points = pointData.Values.ToList();
+
+            for (int i = 0; i < bigBootyData.Width; i++)
+            {
+                for (int j = 0; j < bigBootyData.Height; j++)
+                {
+                    if (!pointData.TryGetValue(new Point(i, j - 1), out BigBootyParticle? value))
+                    {
+                        continue;
+                    }
+
+                    if (pointData.TryGetValue(new Point(i, j - 1), out BigBootyParticle? top))
+                    {
+                        Constraints.Add(new BigBootyLengthConstraints(value, top));
+                    }
+
+                    if (pointData.TryGetValue(new Point(i, j + 1), out BigBootyParticle? bottom))
+                    {
+                        Constraints.Add(new BigBootyLengthConstraints(value, bottom));
+                    }
+
+                    if (pointData.TryGetValue(new Point(i - 1, j), out BigBootyParticle? left))
+                    {
+                        Constraints.Add(new BigBootyLengthConstraints(value, left));
+                    }
+
+                    if (pointData.TryGetValue(new Point(i + 1, j), out BigBootyParticle? right))
+                    {
+                        Constraints.Add(new BigBootyLengthConstraints(value, right));
+                    }
+
+
+                    if (pointData.HasSafeValue(new Point(i + 1, j)) && pointData.HasSafeValue(new Point(i, j + 1)))
+                    {
+                        RenderPoints.Add(pointData[new Point(i + 1, j)]);
+                        RenderPoints.Add(pointData[new Point(i, j)]);
+                        RenderPoints.Add(pointData[new Point(i, j + 1)]);
+                    }
+
+                    if (pointData.HasSafeValue(new Point(i - 1, j)) && pointData.HasSafeValue(new Point(i, j - 1)))
+                    {
+                        RenderPoints.Add(pointData[new Point(i - 1, j)]);
+                        RenderPoints.Add(pointData[new Point(i, j)]);
+                        RenderPoints.Add(pointData[new Point(i, j - 1)]);
+                    }
+                }
+            }
+
+            VertexBuffer = new VertexBuffer(GraphicsDevice, typeof(VertexPositionColorTexture), VertexCount, BufferUsage.WriteOnly);
+            Indicies = new IndexBuffer(GraphicsDevice, typeof(int), VertexCount, BufferUsage.WriteOnly);
+            Indicies.SetData(Enumerable.Range(0, VertexCount).ToArray());
 
             RenderEffect = new BasicEffect(GraphicsDevice);
             RenderEffect.TextureEnabled = true;
@@ -73,7 +177,8 @@ namespace BigBootyMod.Common
         {
             HashSet<DrawData> preDraw = new HashSet<DrawData>(drawinfo.DrawDataCache);
             orig.Invoke(ref drawinfo);
-            LegData = new HashSet<DrawData>(drawinfo.DrawDataCache);
+            LegData.Clear();
+            LegData.UnionWith(drawinfo.DrawDataCache);
             LegData.RemoveWhere(preDraw.Contains);
             LegDataData = LegData.FirstOrDefault();
         }
@@ -114,7 +219,7 @@ namespace BigBootyMod.Common
                     GraphicsDevice.RasterizerState = RasterizerState.CullNone;
                 }
 
-                VertexPositionColorTexture[]? leftCheek = LeftCheek.DrawBigBooty(legTexture, LegDataData);
+                VertexPositionColorTexture[]? leftCheek = DrawBigBooty(LegDataData, true);
                 if (leftCheek != null)
                 {
                     VertexBuffer.SetData(leftCheek);
@@ -126,7 +231,7 @@ namespace BigBootyMod.Common
                     }
                 }
 
-                VertexBuffer.SetData(RightCheek.DrawBigBooty(legTexture, LegDataData));
+                VertexBuffer.SetData(DrawBigBooty(LegDataData, false));
                 GraphicsDevice.SetVertexBuffer(VertexBuffer);
 
                 foreach (var effectTechnique in RenderEffect.CurrentTechnique.Passes)
@@ -202,23 +307,96 @@ namespace BigBootyMod.Common
             }
         }
 
-        public Vector2 AppliedForce;
-
-        public int Timer;
-
         public override void PostUpdate()
         {
-            if (Player.itemAnimation > 0 && ++Timer % 5 == 0 && Main.MouseWorld != Player.Center)
+            if (Player.itemAnimation > 0 && ++JiggleTimer % 5 == 0 && Main.MouseWorld != Player.Center)
             {
-                AppliedForce = -Vector2.Normalize(Main.MouseWorld - Player.Center) * 18000;
-                AppliedForce.X = 0;
+                CheeksAppliedForce = new Vector2(0, Vector2.Normalize(Main.MouseWorld - Player.Center).Y * -18000);
             }
-            AppliedForce *= 0.75f;
-            foreach (BigBootyParticle particle in Cheek.Points)
+
+            CheeksAppliedForce *= 0.75f;
+
+            int frame = Player.legFrame.Y / 56;
+            foreach (BigBootyParticle verlet in Points)
             {
-                particle.ApplyForce(AppliedForce);
+                verlet.ApplyForce(CheeksAppliedForce);
+                verlet.LeftOriginalOffset = GetDrawOffset(frame, true) * SamplingFactor;
+                verlet.RightOriginalOffset = GetDrawOffset(frame, false) * SamplingFactor;
+                verlet.Update(PhysicsConstants.DeltaTime);
             }
-            Cheek.Update(Player);
+
+            foreach (BigBootyLengthConstraints constraint in Constraints)
+            {
+                constraint.ApplyConstraint();
+            }
+        }
+
+        public VertexPositionColorTexture[]? DrawBigBooty(DrawData leggingDrawData, bool leftCheek)
+        {
+            if (RenderPoints == null)
+            {
+                throw new Exception("Tried to make cake without the necessary ingredients.");
+            }
+
+            int? frame = leggingDrawData.sourceRect?.Top / 56;
+            if (!frame.HasValue || leftCheek && frame <= 12)
+            {
+                return null;
+            }
+
+            IList<VertexPositionColorTexture> output = new List<VertexPositionColorTexture>();
+            int direction = leggingDrawData.effect == SpriteEffects.FlipHorizontally ? -1 : 1;
+            return RenderPoints.Select(particle =>
+            {
+                Vector2 screenCoordinates;
+                if (InWorld)
+                {
+                    Vector2 position = leftCheek ? particle.LeftPosition : particle.RightPosition;
+                    if (direction == -1)
+                    {
+                        position.X *= -1;
+                    }
+                    screenCoordinates = position / SamplingFactor + leggingDrawData.position;
+                    screenCoordinates = Vector2.Transform(screenCoordinates, Main.GameViewMatrix.ZoomMatrix);
+                }
+                else
+                {
+                    Vector2 position = leftCheek ? particle.LeftOriginalPosition : particle.RightOriginalPosition;
+                    Vector2 offset = GetDrawOffset(frame.Value, leftCheek);
+                    screenCoordinates = position / SamplingFactor + leggingDrawData.position + offset;
+                }
+                Vector2 normalizedDeviceCoordinates = GraphicsUtils.ScreenToNormalizedDeviceCoordinates(screenCoordinates);
+                Color color = InWorld ? new Color(Lighting.GetSubLight(screenCoordinates + Main.screenPosition)) : Color.White;
+                return new VertexPositionColorTexture(new Vector3(normalizedDeviceCoordinates, 0), color, particle.TextureUVCoordinates);
+            }).ToArray();
+        }
+
+        // Offset from the first frame
+        public static Vector2 GetDrawOffset(int frame, bool left)
+        {
+            if (frame <= 12)
+            {
+                return frame switch
+                {
+                    5 => new Vector2(2, -1),
+                    6 or 12 => new Vector2(2, 0),
+                    <= 10 => new Vector2(2, -1),
+                    _ => Vector2.Zero
+                };
+            }
+
+            if (left)
+            {
+                return Vector2.Zero;
+            }
+
+            return frame switch
+            {
+                13 or 19 => new Vector2(4, 0),
+                14 or 15 => new Vector2(4, -1),
+                16 or 17 or 18 => new Vector2(6, 0),
+                _ => Vector2.Zero
+            };
         }
     }
 }
