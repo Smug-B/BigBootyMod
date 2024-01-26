@@ -173,6 +173,19 @@ namespace BigBootyMod.Common
             SpriteBuffer = typeof(PlayerDrawLayers).GetField("spriteBuffer", BindingFlags.NonPublic | BindingFlags.Static);
         }
 
+        public override void Unload()
+        {
+            Points.Clear();
+            Constraints.Clear();
+            RenderPoints.Clear();
+            Main.QueueMainThreadAction(() =>
+            {
+                VertexBuffer?.Dispose();
+                Indicies?.Dispose();
+                RenderEffect?.Dispose();
+            });
+        }
+
         private void FindLeggingData(On_PlayerDrawLayers.orig_DrawPlayer_13_Leggings orig, ref PlayerDrawSet drawinfo)
         {
             HashSet<DrawData> preDraw = new HashSet<DrawData>(drawinfo.DrawDataCache);
