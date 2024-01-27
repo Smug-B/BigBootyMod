@@ -288,15 +288,17 @@ namespace BigBootyMod.Common
             for (int i = 0; i < verticies.Length; i++)
             {
                 BigBootyParticle bigBootyParticle = RenderPoints[i];
-                Vector2 normalizedCoordinates = Vector2.Transform((bigBootyParticle.Position + drawOffset) * direction + LegData.position, Main.GameViewMatrix.ZoomMatrix) / screenSize;
+                Vector2 normalizedCoordinates = Vector2.Transform((bigBootyParticle.Position + drawOffset) * direction + LegData.position, Main.GameViewMatrix.ZoomMatrix) 
+                    / screenSize;
                 normalizedCoordinates.Y = 1 - normalizedCoordinates.Y;
                 verticies[i] = new VertexPositionColorTexture(new Vector3(normalizedCoordinates * 2 - Vector2.One, 0), LegData.color, bigBootyParticle.TextureUVCoordinates);
             }
             return verticies;*/
 
-            // Unconclusive as to which one 'runs faster'.
+            // Unconclusive as to which one 'runs faster'. 
             return RenderPoints.Select(bigBootyParticle =>
             {
+                // (bigBootyParticle.Position + drawOffset) can be pre-calculated.
                 Vector2 normalizedCoordinates = (bigBootyParticle.Position + drawOffset) * direction + LegData.position;
                 if (InWorld)
                 {
