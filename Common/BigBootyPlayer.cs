@@ -14,6 +14,7 @@ using BigBootyMod.Core.Physics.Particles;
 using BigBootyMod.Common.Physics;
 using BigBootyMod.Core.Utils;
 using BigBootyMod.Core.Physics;
+using BigBootyMod.Common.Extensions;
 
 namespace BigBootyMod.Common
 {
@@ -170,7 +171,6 @@ namespace BigBootyMod.Common
 
             On_PlayerDrawLayers.DrawPlayer_13_Leggings += FindLeggingData;
             On_PlayerDrawLayers.DrawPlayer_RenderAllLayers += RenderBigBooty;
-            SpriteBuffer = typeof(PlayerDrawLayers).GetField("spriteBuffer", BindingFlags.NonPublic | BindingFlags.Static);
         }
 
         public override void Unload()
@@ -199,16 +199,7 @@ namespace BigBootyMod.Common
         private void RenderBigBooty(On_PlayerDrawLayers.orig_DrawPlayer_RenderAllLayers orig, ref PlayerDrawSet drawinfo)
         {
             List<DrawData> drawDataCache = drawinfo.DrawDataCache;
-            SpriteDrawBuffer? spriteBuffer = (SpriteDrawBuffer?)SpriteBuffer.GetValue(null);
-            if (spriteBuffer == null)
-            {
-                spriteBuffer = new SpriteDrawBuffer(Main.graphics.GraphicsDevice, 200);
-                SpriteBuffer.SetValue(this, spriteBuffer);
-            }
-            else
-            {
-                spriteBuffer.CheckGraphicsDevice(Main.graphics.GraphicsDevice);
-            }
+            DisposableSpriteDrawBuffer spriteBuffer = new DisposableSpriteDrawBuffer(Main.graphics.GraphicsDevice, 200);
 
             int end = drawDataCache.IndexOf(LegDataData);
             if (end == -1)
@@ -248,6 +239,7 @@ namespace BigBootyMod.Common
                 VertexBuffer.SetData(DrawBigBooty(LegDataData, false));
                 GraphicsDevice.SetVertexBuffer(VertexBuffer);
 
+                PlayerDrawHelper.SetShaderForData(drawinfo.drawPlayer, drawinfo.cHead, ref LegDataData);
                 foreach (var effectTechnique in RenderEffect.CurrentTechnique.Passes)
                 {
                     effectTechnique.Apply();
@@ -261,9 +253,10 @@ namespace BigBootyMod.Common
 
             if (end != drawDataCache.Count)
             {
-                spriteBuffer.CheckGraphicsDevice(Main.graphics.GraphicsDevice);
                 body(end, drawDataCache.Count, ref drawinfo);
             }
+
+            spriteBuffer.Dispose();
 
             void body(int loopFrom, int loopTo, ref PlayerDrawSet drawinfo)
             {
