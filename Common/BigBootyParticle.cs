@@ -1,8 +1,7 @@
-﻿using BigBootyMod.Core.Utils;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace BigBootyMod.Common.Physics.Particles
+namespace BigBootyMod.Common
 {
     public struct BigBootyParticle
     {
@@ -10,20 +9,20 @@ namespace BigBootyMod.Common.Physics.Particles
 
         public const int SpriteSheetHeight = 1120;
 
-        public Vector2 Position { get; }
+        public Vector2 Position;
 
-        public Vector2 TextureUVCoordinates { get; }
+        public Vector2 TextureUVCoordinates;
 
-        public BigBootyParticle(Vector2 position, Vector2 textureCoordinates)
+        public BigBootyParticle(Vector2 position, Vector2 textureCoordinates, float samplingFactor = 4f)
         {
-            Position = position;
-            TextureUVCoordinates = GraphicsUtils.GetUVCoordinates(textureCoordinates, SpriteSheetWidth, SpriteSheetHeight);
+            Position = position / samplingFactor;
+            TextureUVCoordinates = new Vector2(textureCoordinates.X / SpriteSheetWidth, textureCoordinates.Y / SpriteSheetHeight);
         }
 
-        public VertexPositionColorTexture ToVertex(Vector2 position, Color color)
+        public VertexPositionColorTexture ToVertex(Vector2 normalizedPosition, Color color)
         {
-            Vector2 screenCoordinates = GraphicsUtils.ScreenToNormalizedDeviceCoordinates(position);
-            return new VertexPositionColorTexture(new Vector3(screenCoordinates, 0), color, TextureUVCoordinates);
+            normalizedPosition.Y = 1 - normalizedPosition.Y;
+            return new VertexPositionColorTexture(new Vector3(normalizedPosition * 2 - Vector2.One, 0), color, TextureUVCoordinates);
         }
     }
 }

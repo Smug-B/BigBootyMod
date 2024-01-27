@@ -1,7 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using ReLogic.Content;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -10,10 +9,7 @@ using Terraria;
 using Terraria.ModLoader;
 using Terraria.ID;
 using System.Diagnostics.CodeAnalysis;
-using BigBootyMod.Core.Utils;
 using BigBootyMod.Common.Extensions;
-using BigBootyMod.Common.Physics.Particles;
-using Terraria.Graphics.Renderers;
 
 namespace BigBootyMod.Common
 {
@@ -284,12 +280,25 @@ namespace BigBootyMod.Common
                 return null;
             }
 
+            Vector2 screenSize = Main.ScreenSize.ToVector2();
             Vector2 direction = new Vector2(LegData.effect == SpriteEffects.FlipHorizontally ? -1 : 1, 1);
             Vector2 drawOffset = GetDrawOffset(frame, leftCheek);
-            return RenderPoints.Select(particle =>
+            /*VertexPositionColorTexture[] verticies = new VertexPositionColorTexture[VertexCount];
+            for (int i = 0; i < verticies.Length; i++)
             {
-                Vector2 screenCoordinates = (particle.Position / SamplingFactor + drawOffset) * direction + LegData.position;
-                return particle.ToVertex(screenCoordinates, LegData.color);
+                BigBootyParticle bigBootyParticle = RenderPoints[i];
+                Vector2 normalizedCoordinates = Vector2.Transform((bigBootyParticle.Position + drawOffset) * direction + LegData.position, Main.GameViewMatrix.ZoomMatrix) / screenSize;
+                normalizedCoordinates.Y = 1 - normalizedCoordinates.Y;
+                verticies[i] = new VertexPositionColorTexture(new Vector3(normalizedCoordinates * 2 - Vector2.One, 0), LegData.color, bigBootyParticle.TextureUVCoordinates);
+            }
+            return verticies;*/
+
+            // Unconclusive as to which one 'runs faster'.
+            return RenderPoints.Select(bigBootyParticle =>
+            {
+                Vector2 normalizedCoordinates = Vector2.Transform(
+                    (bigBootyParticle.Position + drawOffset) * direction + LegData.position, Main.GameViewMatrix.ZoomMatrix) / screenSize;
+                return bigBootyParticle.ToVertex(normalizedCoordinates, LegData.color);
             }).ToArray();
         }
 
