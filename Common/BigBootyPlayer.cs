@@ -53,7 +53,7 @@ namespace BigBootyMod.Common
 
         public int JiggleTimer { get; private set; }
 
-        public DrawData LegData;
+        private DrawData LegData;
 
         public void GenerateBigBootyData()
         {
@@ -201,7 +201,7 @@ namespace BigBootyMod.Common
             {
                 end = drawDataCache.Count;
             }
-            else if (LegData.sourceRect.Value.Top / 56 != 5) // Not jumping
+            else if (drawinfo.drawPlayer.legFrame.Y / 56 != 5) // Not jumping
             {
                 end++;
             }

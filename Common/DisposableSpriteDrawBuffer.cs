@@ -13,9 +13,9 @@ namespace BigBootyMod.Common
 
         private IndexBuffer indexBuffer;
 
-        private VertexPositionColorTexture[] vertices = new VertexPositionColorTexture[0];
+        private VertexPositionColorTexture[] vertices = Array.Empty<VertexPositionColorTexture>();
 
-        private Texture[] textures = new Texture[0];
+        private Texture[] textures = Array.Empty<Texture>();
 
         private int maxSprites;
 
