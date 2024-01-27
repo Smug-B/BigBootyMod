@@ -139,13 +139,13 @@ namespace BigBootyMod.Common
             float w;
             if (sourceRectangle.HasValue)
             {
-                z = (float)sourceRectangle.Value.Width * scale.X;
-                w = (float)sourceRectangle.Value.Height * scale.Y;
+                z = sourceRectangle.Value.Width * scale.X;
+                w = sourceRectangle.Value.Height * scale.Y;
             }
             else
             {
-                z = (float)texture.Width * scale.X;
-                w = (float)texture.Height * scale.Y;
+                z = texture.Width * scale.X;
+                w = texture.Height * scale.Y;
             }
             Draw(texture, new Vector4(position.X, position.Y, z, w), sourceRectangle, colors, rotation, origin, effects, 0f);
         }
@@ -157,7 +157,7 @@ namespace BigBootyMod.Common
 
         public void Draw(Texture2D texture, Vector4 destinationRectangle, Rectangle? sourceRectangle, VertexColors colors, float rotation, Vector2 origin, SpriteEffects effect, float depth)
         {
-            Vector4 sourceRectangle2 = default(Vector4);
+            Vector4 sourceRectangle2 = default;
             if (sourceRectangle.HasValue)
             {
                 sourceRectangle2.X = sourceRectangle.Value.X;
@@ -172,12 +172,12 @@ namespace BigBootyMod.Common
                 sourceRectangle2.Z = texture.Width;
                 sourceRectangle2.W = texture.Height;
             }
-            Vector2 texCoordTL = default(Vector2);
-            texCoordTL.X = sourceRectangle2.X / (float)texture.Width;
-            texCoordTL.Y = sourceRectangle2.Y / (float)texture.Height;
-            Vector2 texCoordBR = default(Vector2);
-            texCoordBR.X = (sourceRectangle2.X + sourceRectangle2.Z) / (float)texture.Width;
-            texCoordBR.Y = (sourceRectangle2.Y + sourceRectangle2.W) / (float)texture.Height;
+            Vector2 texCoordTL = default;
+            texCoordTL.X = sourceRectangle2.X / texture.Width;
+            texCoordTL.Y = sourceRectangle2.Y / texture.Height;
+            Vector2 texCoordBR = default;
+            texCoordBR.X = (sourceRectangle2.X + sourceRectangle2.Z) / texture.Width;
+            texCoordBR.Y = (sourceRectangle2.Y + sourceRectangle2.W) / texture.Height;
             if ((effect & SpriteEffects.FlipVertically) != 0)
             {
                 float y = texCoordBR.Y;
