@@ -13,7 +13,7 @@ using BigBootyMod.Common.Extensions;
 
 namespace BigBootyMod.Common
 {
-    public class BigBootyPlayer : ModPlayer
+    public class BigBootySystem : ModSystem
     {
         public const int SamplingFactor = 4;
 
