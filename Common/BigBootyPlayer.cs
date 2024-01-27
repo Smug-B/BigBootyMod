@@ -53,9 +53,7 @@ namespace BigBootyMod.Common
 
         public int JiggleTimer { get; private set; }
 
-        public HashSet<DrawData> LegData { get; } = new HashSet<DrawData>();
-
-        public DrawData LegDataData;
+        public DrawData LegData;
 
         public void GenerateBigBootyData()
         {
@@ -188,12 +186,9 @@ namespace BigBootyMod.Common
 
         private void FindLeggingData(On_PlayerDrawLayers.orig_DrawPlayer_13_Leggings orig, ref PlayerDrawSet drawinfo)
         {
-            HashSet<DrawData> preDraw = new HashSet<DrawData>(drawinfo.DrawDataCache);
+            int legIndex = drawinfo.DrawDataCache.Count;
             orig.Invoke(ref drawinfo);
-            LegData.Clear();
-            LegData.UnionWith(drawinfo.DrawDataCache);
-            LegData.RemoveWhere(preDraw.Contains);
-            LegDataData = LegData.FirstOrDefault();
+            LegData = drawinfo.DrawDataCache.Count == legIndex ? default : drawinfo.DrawDataCache[legIndex];
         }
 
         private void RenderBigBooty(On_PlayerDrawLayers.orig_DrawPlayer_RenderAllLayers orig, ref PlayerDrawSet drawinfo)
@@ -201,12 +196,12 @@ namespace BigBootyMod.Common
             List<DrawData> drawDataCache = drawinfo.DrawDataCache;
             DisposableSpriteDrawBuffer spriteBuffer = new DisposableSpriteDrawBuffer(Main.graphics.GraphicsDevice, 200);
 
-            int end = drawDataCache.IndexOf(LegDataData);
+            int end = drawDataCache.IndexOf(LegData);
             if (end == -1)
             {
                 end = drawDataCache.Count;
             }
-            else if (LegDataData.sourceRect.Value.Top / 56 != 5) // Not jumping
+            else if (LegData.sourceRect.Value.Top / 56 != 5) // Not jumping
             {
                 end++;
             }
@@ -216,7 +211,7 @@ namespace BigBootyMod.Common
             {
                 RasterizerState oldState = GraphicsDevice.RasterizerState;
 
-                Texture2D legTexture = LegDataData.texture;
+                Texture2D legTexture = LegData.texture;
                 GraphicsDevice.Indices = Indicies;
                 GraphicsDevice.Textures[0] = legTexture;
                 if (InWorld)
@@ -224,30 +219,33 @@ namespace BigBootyMod.Common
                     GraphicsDevice.RasterizerState = RasterizerState.CullNone;
                 }
 
-                VertexPositionColorTexture[]? leftCheek = DrawBigBooty(LegDataData, true);
-                if (leftCheek != null)
+                bool drawCheekData(ref PlayerDrawSet drawinfo, bool leftCheek)
                 {
-                    VertexBuffer.SetData(leftCheek);
+                    VertexPositionColorTexture[]? cheekData = DrawBigBooty(ref drawinfo, leftCheek);
+                    if (cheekData == null)
+                    {
+                        return false;
+                    }
+
+                    VertexBuffer.SetData(cheekData);
                     GraphicsDevice.SetVertexBuffer(VertexBuffer);
+                    PlayerDrawHelper.SetShaderForData(drawinfo.drawPlayer, drawinfo.cHead, ref LegData);
                     foreach (var effectTechnique in RenderEffect.CurrentTechnique.Passes)
                     {
                         effectTechnique.Apply();
                         GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, Indicies.IndexCount, 0, Indicies.IndexCount);
                     }
+                    return true;
                 }
 
-                VertexBuffer.SetData(DrawBigBooty(LegDataData, false));
-                GraphicsDevice.SetVertexBuffer(VertexBuffer);
+                bool hasDrawnAnything = drawCheekData(ref drawinfo, true);
+                hasDrawnAnything = drawCheekData(ref drawinfo, false) || hasDrawnAnything; // Strong reliance on JIT just... not optimizing this away.
 
-                PlayerDrawHelper.SetShaderForData(drawinfo.drawPlayer, drawinfo.cHead, ref LegDataData);
-                foreach (var effectTechnique in RenderEffect.CurrentTechnique.Passes)
+                if (hasDrawnAnything)
                 {
-                    effectTechnique.Apply();
-                    GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, Indicies.IndexCount, 0, Indicies.IndexCount);
+                    Main.spriteBatch.End();
+                    Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, InWorld ? Main.GameViewMatrix.TransformationMatrix : Main.UIScaleMatrix);
                 }
-
-                Main.spriteBatch.End();
-                Main.spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, Main.DefaultSamplerState, DepthStencilState.None, Main.Rasterizer, null, InWorld ? Main.GameViewMatrix.TransformationMatrix : Main.UIScaleMatrix);
                 GraphicsDevice.RasterizerState = oldState;
             }
 
@@ -339,21 +337,23 @@ namespace BigBootyMod.Common
             }
         }
 
-        public VertexPositionColorTexture[]? DrawBigBooty(DrawData leggingDrawData, bool leftCheek)
+        public VertexPositionColorTexture[]? DrawBigBooty(ref PlayerDrawSet drawinfo, bool leftCheek)
         {
-            if (RenderPoints == null)
-            {
-                throw new Exception("Tried to make cake without the necessary ingredients.");
-            }
-
-            int? frame = leggingDrawData.sourceRect?.Top / 56;
-            if (!frame.HasValue || leftCheek && frame <= 12)
+            int frame = drawinfo.drawPlayer.legFrame.Y / 56;
+            if (LegData.Equals(default) ||
+                (leftCheek && frame <= 12) ||
+                drawinfo.drawPlayer.invis ||
+                drawinfo.drawPlayer.mount.Active ||
+                drawinfo.isSitting ||
+                drawinfo.drawPlayer.legs == 140 ||
+                drawinfo.shadow != 0 ||
+                drawinfo.drawPlayer.legs == 169)
             {
                 return null;
             }
 
             IList<VertexPositionColorTexture> output = new List<VertexPositionColorTexture>();
-            int direction = leggingDrawData.effect == SpriteEffects.FlipHorizontally ? -1 : 1;
+            int direction = LegData.effect == SpriteEffects.FlipHorizontally ? -1 : 1;
             return RenderPoints.Select(particle =>
             {
                 Vector2 screenCoordinates;
@@ -364,18 +364,17 @@ namespace BigBootyMod.Common
                     {
                         position.X *= -1;
                     }
-                    screenCoordinates = position / SamplingFactor + leggingDrawData.position;
+                    screenCoordinates = position / SamplingFactor + LegData.position;
                     screenCoordinates = Vector2.Transform(screenCoordinates, Main.GameViewMatrix.ZoomMatrix);
                 }
                 else
                 {
                     Vector2 position = leftCheek ? particle.LeftOriginalPosition : particle.RightOriginalPosition;
-                    Vector2 offset = GetDrawOffset(frame.Value, leftCheek);
-                    screenCoordinates = position / SamplingFactor + leggingDrawData.position + offset;
+                    Vector2 offset = GetDrawOffset(frame, leftCheek);
+                    screenCoordinates = position / SamplingFactor + LegData.position + offset;
                 }
                 Vector2 normalizedDeviceCoordinates = GraphicsUtils.ScreenToNormalizedDeviceCoordinates(screenCoordinates);
-                Color color = InWorld ? new Color(Lighting.GetSubLight(screenCoordinates + Main.screenPosition)) : Color.White;
-                return new VertexPositionColorTexture(new Vector3(normalizedDeviceCoordinates, 0), color, particle.TextureUVCoordinates);
+                return new VertexPositionColorTexture(new Vector3(normalizedDeviceCoordinates, 0), LegData.color, particle.TextureUVCoordinates);
             }).ToArray();
         }
 
