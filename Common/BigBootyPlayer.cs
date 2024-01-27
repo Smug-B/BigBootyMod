@@ -40,6 +40,8 @@ namespace BigBootyMod.Common
         [NotNull]
         public static FieldInfo? Transform { get; private set; }
 
+        public static bool MultiSample { get; internal set; }
+
         private DrawData LegData;
 
         public void GenerateBigBootyData()
@@ -274,7 +276,7 @@ namespace BigBootyMod.Common
                 drawinfo.drawPlayer.mount.Active ||
                 drawinfo.isSitting ||
                 drawinfo.drawPlayer.legs == 140 ||
-                drawinfo.shadow != 0 ||
+                (!MultiSample && drawinfo.shadow != 0) ||
                 drawinfo.drawPlayer.legs == 169)
             {
                 return null;

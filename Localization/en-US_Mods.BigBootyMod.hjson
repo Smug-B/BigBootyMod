@@ -1,1 +1,11 @@
+Configs: {
+	BigBootyConfig: {
+		DisplayName: Big Booty Config
+		Headers.Bakery: Bakery Header
 
+		MultiSampling: {
+			Label: Multi Sampling
+			Tooltip: Whether or not these bodacious cheeks are also rendered as armor after effects.
+		}
+	}
+}
