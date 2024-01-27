@@ -10,11 +10,10 @@ using Terraria;
 using Terraria.ModLoader;
 using Terraria.ID;
 using System.Diagnostics.CodeAnalysis;
-using BigBootyMod.Core.Physics.Particles;
-using BigBootyMod.Common.Physics;
 using BigBootyMod.Core.Utils;
-using BigBootyMod.Core.Physics;
 using BigBootyMod.Common.Extensions;
+using BigBootyMod.Common.Physics.Particles;
+using Terraria.Graphics.Renderers;
 
 namespace BigBootyMod.Common
 {
@@ -27,10 +26,6 @@ namespace BigBootyMod.Common
         public static bool InWorld => Main.menuMode == 10;
 
         public GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
-
-        public static IList<BigBootyParticle> Points { get; private set; } = new List<BigBootyParticle>();
-
-        public static IList<BigBootyLengthConstraints> Constraints { get; private set; } = new List<BigBootyLengthConstraints>();
 
         public static IList<BigBootyParticle> RenderPoints { get; private set; } = new List<BigBootyParticle>();
 
@@ -49,19 +44,16 @@ namespace BigBootyMod.Common
         [NotNull]
         public static FieldInfo? Transform { get; private set; }
 
-        public Vector2 CheeksAppliedForce { get; set; }
-
-        public int JiggleTimer { get; private set; }
-
         private DrawData LegData;
 
         public void GenerateBigBootyData()
         {
             Texture2D bigBootyData = BigBootyMod.Request<Texture2D>("Assets/BigBootyData", AssetRequestMode.ImmediateLoad).Value;
+
             Color[] colorData = new Color[bigBootyData.Width * bigBootyData.Height];
             bigBootyData.GetData(colorData);
 
-            IDictionary<Point, BigBootyParticle> pointData = new Dictionary<Point, BigBootyParticle>();
+            Dictionary<Point, BigBootyParticle> pointData = new Dictionary<Point, BigBootyParticle>();
             for (int j = 0; j < bigBootyData.Height; j++)
             {
                 for (int i = 0; i < bigBootyData.Width; i++)
@@ -90,62 +82,28 @@ namespace BigBootyMod.Common
                         textureSampleCoordinates = new Vector2(27, 43);
                     }
 
-                    Vector2 matchingForce = new Vector2(3000);
-                    float mass = 1;
-                    if (color.G == 255)
-                    {
-                        mass = -1;
-                    }
-                    else if (color.G == 100)
-                    {
-                        matchingForce *= 2;
-                    }
-
                     Vector2 position = new Vector2(i, j) + new Vector2(-16, -9) * SamplingFactor;
-                    pointData.Add(new Point(i, j), new BigBootyParticle(position, position, mass, matchingForce, textureSampleCoordinates));
+                    pointData.Add(new Point(i, j), new BigBootyParticle(position, textureSampleCoordinates));
                 }
             }
-
-            Points = pointData.Values.ToList();
 
             for (int i = 0; i < bigBootyData.Width; i++)
             {
                 for (int j = 0; j < bigBootyData.Height; j++)
                 {
-                    if (!pointData.TryGetValue(new Point(i, j - 1), out BigBootyParticle? value))
+                    if (!pointData.ContainsKey(new Point(i, j - 1)))
                     {
                         continue;
                     }
 
-                    if (pointData.TryGetValue(new Point(i, j - 1), out BigBootyParticle? top))
-                    {
-                        Constraints.Add(new BigBootyLengthConstraints(value, top));
-                    }
-
-                    if (pointData.TryGetValue(new Point(i, j + 1), out BigBootyParticle? bottom))
-                    {
-                        Constraints.Add(new BigBootyLengthConstraints(value, bottom));
-                    }
-
-                    if (pointData.TryGetValue(new Point(i - 1, j), out BigBootyParticle? left))
-                    {
-                        Constraints.Add(new BigBootyLengthConstraints(value, left));
-                    }
-
-                    if (pointData.TryGetValue(new Point(i + 1, j), out BigBootyParticle? right))
-                    {
-                        Constraints.Add(new BigBootyLengthConstraints(value, right));
-                    }
-
-
-                    if (pointData.HasSafeValue(new Point(i + 1, j)) && pointData.HasSafeValue(new Point(i, j + 1)))
+                    if (pointData.ContainsKey(new Point(i + 1, j)) && pointData.ContainsKey(new Point(i, j + 1)))
                     {
                         RenderPoints.Add(pointData[new Point(i + 1, j)]);
                         RenderPoints.Add(pointData[new Point(i, j)]);
                         RenderPoints.Add(pointData[new Point(i, j + 1)]);
                     }
 
-                    if (pointData.HasSafeValue(new Point(i - 1, j)) && pointData.HasSafeValue(new Point(i, j - 1)))
+                    if (pointData.ContainsKey(new Point(i - 1, j)) && pointData.ContainsKey(new Point(i, j - 1)))
                     {
                         RenderPoints.Add(pointData[new Point(i - 1, j)]);
                         RenderPoints.Add(pointData[new Point(i, j)]);
@@ -173,8 +131,6 @@ namespace BigBootyMod.Common
 
         public override void Unload()
         {
-            Points.Clear();
-            Constraints.Clear();
             RenderPoints.Clear();
             Main.QueueMainThreadAction(() =>
             {
@@ -313,30 +269,6 @@ namespace BigBootyMod.Common
             }
         }
 
-        public override void PostUpdate()
-        {
-            if (Player.itemAnimation > 0 && ++JiggleTimer % 5 == 0 && Main.MouseWorld != Player.Center)
-            {
-                CheeksAppliedForce = new Vector2(0, Vector2.Normalize(Main.MouseWorld - Player.Center).Y * -18000);
-            }
-
-            CheeksAppliedForce *= 0.75f;
-
-            int frame = Player.legFrame.Y / 56;
-            foreach (BigBootyParticle verlet in Points)
-            {
-                verlet.ApplyForce(CheeksAppliedForce);
-                verlet.LeftOriginalOffset = GetDrawOffset(frame, true) * SamplingFactor;
-                verlet.RightOriginalOffset = GetDrawOffset(frame, false) * SamplingFactor;
-                verlet.Update(PhysicsConstants.DeltaTime);
-            }
-
-            foreach (BigBootyLengthConstraints constraint in Constraints)
-            {
-                constraint.ApplyConstraint();
-            }
-        }
-
         public VertexPositionColorTexture[]? DrawBigBooty(ref PlayerDrawSet drawinfo, bool leftCheek)
         {
             int frame = drawinfo.drawPlayer.legFrame.Y / 56;
@@ -352,29 +284,12 @@ namespace BigBootyMod.Common
                 return null;
             }
 
-            IList<VertexPositionColorTexture> output = new List<VertexPositionColorTexture>();
-            int direction = LegData.effect == SpriteEffects.FlipHorizontally ? -1 : 1;
+            Vector2 direction = new Vector2(LegData.effect == SpriteEffects.FlipHorizontally ? -1 : 1, 1);
+            Vector2 drawOffset = GetDrawOffset(frame, leftCheek);
             return RenderPoints.Select(particle =>
             {
-                Vector2 screenCoordinates;
-                if (InWorld)
-                {
-                    Vector2 position = leftCheek ? particle.LeftPosition : particle.RightPosition;
-                    if (direction == -1)
-                    {
-                        position.X *= -1;
-                    }
-                    screenCoordinates = position / SamplingFactor + LegData.position;
-                    screenCoordinates = Vector2.Transform(screenCoordinates, Main.GameViewMatrix.ZoomMatrix);
-                }
-                else
-                {
-                    Vector2 position = leftCheek ? particle.LeftOriginalPosition : particle.RightOriginalPosition;
-                    Vector2 offset = GetDrawOffset(frame, leftCheek);
-                    screenCoordinates = position / SamplingFactor + LegData.position + offset;
-                }
-                Vector2 normalizedDeviceCoordinates = GraphicsUtils.ScreenToNormalizedDeviceCoordinates(screenCoordinates);
-                return new VertexPositionColorTexture(new Vector3(normalizedDeviceCoordinates, 0), LegData.color, particle.TextureUVCoordinates);
+                Vector2 screenCoordinates = (particle.Position / SamplingFactor + drawOffset) * direction + LegData.position;
+                return particle.ToVertex(screenCoordinates, LegData.color);
             }).ToArray();
         }
 
