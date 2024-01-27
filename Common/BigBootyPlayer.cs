@@ -283,6 +283,7 @@ namespace BigBootyMod.Common
             Vector2 screenSize = Main.ScreenSize.ToVector2();
             Vector2 direction = new Vector2(LegData.effect == SpriteEffects.FlipHorizontally ? -1 : 1, 1);
             Vector2 drawOffset = GetDrawOffset(frame, leftCheek);
+
             /*VertexPositionColorTexture[] verticies = new VertexPositionColorTexture[VertexCount];
             for (int i = 0; i < verticies.Length; i++)
             {
@@ -296,9 +297,12 @@ namespace BigBootyMod.Common
             // Unconclusive as to which one 'runs faster'.
             return RenderPoints.Select(bigBootyParticle =>
             {
-                Vector2 normalizedCoordinates = Vector2.Transform(
-                    (bigBootyParticle.Position + drawOffset) * direction + LegData.position, Main.GameViewMatrix.ZoomMatrix) / screenSize;
-                return bigBootyParticle.ToVertex(normalizedCoordinates, LegData.color);
+                Vector2 normalizedCoordinates = (bigBootyParticle.Position + drawOffset) * direction + LegData.position;
+                if (InWorld)
+                {
+                    normalizedCoordinates = Vector2.Transform(normalizedCoordinates, Main.GameViewMatrix.ZoomMatrix);
+                }
+                return bigBootyParticle.ToVertex(normalizedCoordinates / screenSize, LegData.color);
             }).ToArray();
         }
 
