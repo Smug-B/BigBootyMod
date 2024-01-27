@@ -19,7 +19,7 @@ namespace BigBootyMod.Common
 
         public static int VertexCount => RenderPoints.Count;
 
-        public static bool InWorld => Main.menuMode == 10;
+        public static bool InWorld => Main.menuMode == 10 || Main.menuMode == 14;
 
         public GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
 
