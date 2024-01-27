@@ -2,3 +2,4 @@ displayName = Big Booty Mod
 author = Smug
 version = 0.1
 side = Client
+homepage = https://github.com/Smug-B/BigBootyMod
