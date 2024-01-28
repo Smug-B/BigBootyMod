@@ -1,5 +1,5 @@
 displayName = Big Booty Mod
 author = T(ruly) H(umble) U(nder) G(od) Shakers Central
-version = 0.1
+version = 0.2
 side = Client
 homepage = https://github.com/Smug-B/BigBootyMod

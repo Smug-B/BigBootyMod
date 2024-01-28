@@ -11,7 +11,7 @@ namespace BigBootyMod
         [Header("Bakery")]
         [DefaultValue(false)]
         [Tooltip("Whether or not these bodacious cheeks are also rendered as armor after effects.")]
-        public bool MultiSampling;
+        public bool MultiSampling { get; set; }
 
         public override void OnChanged() => BigBootySystem.MultiSample = MultiSampling;
     }

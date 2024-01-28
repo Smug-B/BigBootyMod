@@ -9,9 +9,9 @@ namespace BigBootyMod.Common
 
         public const int SpriteSheetHeight = 1120;
 
-        public Vector2 Position;
+        public Vector2 Position { get; }
 
-        public Vector2 TextureUVCoordinates;
+        public Vector2 TextureUVCoordinates { get; }
 
         public BigBootyParticle(Vector2 position, Vector2 textureCoordinates, float samplingFactor = 4f)
         {

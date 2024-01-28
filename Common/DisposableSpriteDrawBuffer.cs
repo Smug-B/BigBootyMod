@@ -5,7 +5,7 @@ using Terraria.Graphics;
 
 namespace BigBootyMod.Common
 {
-    public class DisposableSpriteDrawBuffer : IDisposable
+    public sealed class DisposableSpriteDrawBuffer : IDisposable
     {
         private GraphicsDevice graphicsDevice;
 
@@ -21,9 +21,9 @@ namespace BigBootyMod.Common
 
         private int vertexCount;
 
-        private VertexBufferBinding[] preBindVertexBuffers;
+        private VertexBufferBinding[]? preBindVertexBuffers;
 
-        private IndexBuffer preBindIndexBuffer;
+        private IndexBuffer? preBindIndexBuffer;
 
         public DisposableSpriteDrawBuffer(GraphicsDevice graphicsDevice, int defaultSize)
         {
@@ -43,15 +43,9 @@ namespace BigBootyMod.Common
 
         private void CreateBuffers()
         {
-            if (vertexBuffer != null)
-            {
-                vertexBuffer.Dispose();
-            }
+            vertexBuffer?.Dispose();
             vertexBuffer = new DynamicVertexBuffer(graphicsDevice, typeof(VertexPositionColorTexture), maxSprites * 4, BufferUsage.WriteOnly);
-            if (indexBuffer != null)
-            {
-                indexBuffer.Dispose();
-            }
+            indexBuffer?.Dispose();
             indexBuffer = new IndexBuffer(graphicsDevice, typeof(ushort), maxSprites * 6, BufferUsage.WriteOnly);
             indexBuffer.SetData(GenIndexBuffer(maxSprites));
             Array.Resize(ref vertices, maxSprites * 6);
@@ -113,16 +107,6 @@ namespace BigBootyMod.Common
             DrawRange(index, 1);
         }
 
-        public void Draw(Texture2D texture, Vector2 position, VertexColors colors)
-        {
-            Draw(texture, position, null, colors, 0f, Vector2.Zero, 1f, SpriteEffects.None);
-        }
-
-        public void Draw(Texture2D texture, Rectangle destination, VertexColors colors)
-        {
-            Draw(texture, destination, null, colors);
-        }
-
         public void Draw(Texture2D texture, Rectangle destination, Rectangle? sourceRectangle, VertexColors colors)
         {
             Draw(texture, destination, sourceRectangle, colors, 0f, Vector2.Zero, SpriteEffects.None);
@@ -180,15 +164,11 @@ namespace BigBootyMod.Common
             texCoordBR.Y = (sourceRectangle2.Y + sourceRectangle2.W) / texture.Height;
             if ((effect & SpriteEffects.FlipVertically) != 0)
             {
-                float y = texCoordBR.Y;
-                texCoordBR.Y = texCoordTL.Y;
-                texCoordTL.Y = y;
+                (texCoordTL.Y, texCoordBR.Y) = (texCoordBR.Y, texCoordTL.Y);
             }
             if ((effect & SpriteEffects.FlipHorizontally) != 0)
             {
-                float x = texCoordBR.X;
-                texCoordBR.X = texCoordTL.X;
-                texCoordTL.X = x;
+                (texCoordTL.X, texCoordBR.X) = (texCoordBR.X, texCoordTL.X);
             }
             QueueSprite(destinationRectangle, -origin, colors, sourceRectangle2, texCoordTL, texCoordBR, texture, depth, rotation);
         }

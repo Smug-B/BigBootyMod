@@ -21,7 +21,7 @@ namespace BigBootyMod.Common
 
         public static bool InWorld => Main.menuMode == 10 || Main.menuMode == 14;
 
-        public GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
+        public static GraphicsDevice GraphicsDevice => Main.graphics.GraphicsDevice;
 
         public static IList<BigBootyParticle> RenderPoints { get; private set; } = new List<BigBootyParticle>();
 
@@ -44,7 +44,7 @@ namespace BigBootyMod.Common
 
         private DrawData LegData;
 
-        public void GenerateBigBootyData()
+        public static void GenerateBigBootyData()
         {
             Texture2D bigBootyData = BigBootyMod.Request<Texture2D>("Assets/BigBootyData", AssetRequestMode.ImmediateLoad).Value;
 
@@ -114,9 +114,11 @@ namespace BigBootyMod.Common
             Indicies = new IndexBuffer(GraphicsDevice, typeof(int), VertexCount, BufferUsage.WriteOnly);
             Indicies.SetData(Enumerable.Range(0, VertexCount).ToArray());
 
-            RenderEffect = new BasicEffect(GraphicsDevice);
-            RenderEffect.TextureEnabled = true;
-            RenderEffect.VertexColorEnabled = true;
+            RenderEffect = new BasicEffect(GraphicsDevice)
+            {
+                TextureEnabled = true,
+                VertexColorEnabled = true
+            };
         }
 
         public override void Load()
@@ -151,14 +153,7 @@ namespace BigBootyMod.Common
             DisposableSpriteDrawBuffer spriteBuffer = new DisposableSpriteDrawBuffer(Main.graphics.GraphicsDevice, 200);
 
             int end = drawDataCache.IndexOf(LegData);
-            if (end == -1)
-            {
-                end = drawDataCache.Count;
-            }
-            else if (drawinfo.drawPlayer.legFrame.Y / 56 != 5) // Not jumping
-            {
-                end++;
-            }
+            end = end == -1 ? drawDataCache.Count : (drawinfo.drawPlayer.legFrame.Y / 56 != 5 ? end + 1 : end);
 
             body(0, end, ref drawinfo);
             if (end != -1)
@@ -283,8 +278,8 @@ namespace BigBootyMod.Common
             }
 
             Vector2 screenSize = Main.ScreenSize.ToVector2();
-            Vector2 direction = new Vector2(LegData.effect == SpriteEffects.FlipHorizontally ? -1 : 1, 1);
-            Vector2 drawOffset = GetDrawOffset(frame, leftCheek);
+            Vector2 direction = new Vector2(drawinfo.drawPlayer.direction, drawinfo.drawPlayer.gravDir);
+            Vector2 drawOffset = GetDrawOffset(frame, leftCheek) + new Vector2(0, drawinfo.drawPlayer.gravDir < 0 ? 28 : 0);
 
             /*VertexPositionColorTexture[] verticies = new VertexPositionColorTexture[VertexCount];
             for (int i = 0; i < verticies.Length; i++)
@@ -304,7 +299,7 @@ namespace BigBootyMod.Common
                 Vector2 normalizedCoordinates = (bigBootyParticle.Position + drawOffset) * direction + LegData.position;
                 if (InWorld)
                 {
-                    normalizedCoordinates = Vector2.Transform(normalizedCoordinates, Main.GameViewMatrix.ZoomMatrix);
+                    normalizedCoordinates = Vector2.Transform(normalizedCoordinates, Main.GameViewMatrix.TransformationMatrix);
                 }
                 return bigBootyParticle.ToVertex(normalizedCoordinates / screenSize, LegData.color);
             }).ToArray();
